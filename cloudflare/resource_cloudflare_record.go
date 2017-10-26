@@ -3,10 +3,13 @@ package cloudflare
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/hashicorp/terraform/helper/schema"
 )
+
+const recordNotFoundMessage = "Invalid dns record identifier"
 
 func resourceCloudFlareRecord() *schema.Resource {
 	return &schema.Resource{
@@ -137,6 +140,10 @@ func resourceCloudFlareRecordRead(d *schema.ResourceData, meta interface{}) erro
 	}
 
 	record, err := client.DNSRecord(zoneID, d.Id())
+	if err != nil && strings.Contains(err.Error(), recordNotFoundMessage) {
+		d.SetId("")
+		return nil
+	}
 	if err != nil {
 		return err
 	}
@@ -205,9 +212,8 @@ func resourceCloudFlareRecordDelete(d *schema.ResourceData, meta interface{}) er
 	log.Printf("[INFO] Deleting CloudFlare Record: %s, %s", domain, d.Id())
 
 	err = client.DeleteDNSRecord(zoneID, d.Id())
-	if err != nil {
-		return fmt.Errorf("Error deleting CloudFlare Record: %s", err)
+	if err == nil || strings.Contains(err.Error(), recordNotFoundMessage) {
+		return nil
 	}
-
-	return nil
+	return fmt.Errorf("Error deleting CloudFlare Record: %s", err)
 }
