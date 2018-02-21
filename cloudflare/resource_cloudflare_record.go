@@ -27,14 +27,10 @@ func resourceCloudFlareRecord() *schema.Resource {
 				ForceNew: true,
 			},
 
-			"name": {
+			"subdomain": {
 				Type:     schema.TypeString,
-				Required: true,
-			},
-
-			"hostname": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Optional: true,
+				Default:  "",
 			},
 
 			"type": {
@@ -76,12 +72,14 @@ func resourceCloudFlareRecord() *schema.Resource {
 func resourceCloudFlareRecordCreate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*cloudflare.API)
 
+	subdomain := d.Get("subdomain").(string)
+	domain := d.Get("domain").(string)
 	newRecord := cloudflare.DNSRecord{
 		Type:     d.Get("type").(string),
-		Name:     d.Get("name").(string),
+		Name:     recordName(subdomain, domain),
 		Content:  d.Get("value").(string),
 		Proxied:  d.Get("proxied").(bool),
-		ZoneName: d.Get("domain").(string),
+		ZoneName: domain,
 	}
 
 	if priority, ok := d.GetOk("priority"); ok {
@@ -149,8 +147,8 @@ func resourceCloudFlareRecordRead(d *schema.ResourceData, meta interface{}) erro
 	}
 
 	d.SetId(record.ID)
-	d.Set("hostname", record.Name)
 	d.Set("type", record.Type)
+	d.Set("subdomain", subdomainName(record.Name, domain))
 	d.Set("value", record.Content)
 	d.Set("ttl", record.TTL)
 	d.Set("priority", record.Priority)
@@ -163,12 +161,14 @@ func resourceCloudFlareRecordRead(d *schema.ResourceData, meta interface{}) erro
 func resourceCloudFlareRecordUpdate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*cloudflare.API)
 
+	subdomain := d.Get("subdomain").(string)
+	domain := d.Get("domain").(string)
 	updateRecord := cloudflare.DNSRecord{
 		ID:       d.Id(),
 		Type:     d.Get("type").(string),
-		Name:     d.Get("name").(string),
+		Name:     recordName(subdomain, domain),
 		Content:  d.Get("value").(string),
-		ZoneName: d.Get("domain").(string),
+		ZoneName: domain,
 		Proxied:  false,
 	}
 
@@ -216,4 +216,18 @@ func resourceCloudFlareRecordDelete(d *schema.ResourceData, meta interface{}) er
 		return nil
 	}
 	return fmt.Errorf("Error deleting CloudFlare Record: %s", err)
+}
+
+func subdomainName(fullName, domain string) string {
+	return strings.TrimSuffix(
+		strings.TrimSuffix(fullName, domain),
+		".",
+	)
+}
+
+func recordName(subdomain, domain string) string {
+	if subdomain == "" {
+		return domain
+	}
+	return fmt.Sprintf("%s.%s", subdomain, domain)
 }
