@@ -29,7 +29,8 @@ func resourceCloudFlareRecord() *schema.Resource {
 
 			"subdomain": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
+				Default:  "",
 			},
 
 			"type": {
@@ -75,7 +76,7 @@ func resourceCloudFlareRecordCreate(d *schema.ResourceData, meta interface{}) er
 	domain := d.Get("domain").(string)
 	newRecord := cloudflare.DNSRecord{
 		Type:     d.Get("type").(string),
-		Name:     fmt.Sprintf("%s.%s", subdomain, domain),
+		Name:     recordName(subdomain, domain),
 		Content:  d.Get("value").(string),
 		Proxied:  d.Get("proxied").(bool),
 		ZoneName: domain,
@@ -167,7 +168,7 @@ func resourceCloudFlareRecordUpdate(d *schema.ResourceData, meta interface{}) er
 	updateRecord := cloudflare.DNSRecord{
 		ID:       d.Id(),
 		Type:     d.Get("type").(string),
-		Name:     fmt.Sprintf("%s.%s", subdomain, domain),
+		Name:     recordName(subdomain, domain),
 		Content:  d.Get("value").(string),
 		ZoneName: domain,
 		Proxied:  false,
@@ -217,4 +218,11 @@ func resourceCloudFlareRecordDelete(d *schema.ResourceData, meta interface{}) er
 		return nil
 	}
 	return fmt.Errorf("Error deleting CloudFlare Record: %s", err)
+}
+
+func recordName(subdomain, domain string) string {
+	if subdomain == "" {
+		return domain
+	}
+	return fmt.Sprintf("%s.%s", subdomain, domain)
 }
