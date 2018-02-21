@@ -146,11 +146,9 @@ func resourceCloudFlareRecordRead(d *schema.ResourceData, meta interface{}) erro
 		return err
 	}
 
-	subdomain := strings.TrimSuffix(record.Name, fmt.Sprintf(".%s", domain))
-
 	d.SetId(record.ID)
 	d.Set("type", record.Type)
-	d.Set("subdomain", subdomain)
+	d.Set("subdomain", subdomainName(record.Name, domain))
 	d.Set("value", record.Content)
 	d.Set("ttl", record.TTL)
 	d.Set("priority", record.Priority)
@@ -218,6 +216,13 @@ func resourceCloudFlareRecordDelete(d *schema.ResourceData, meta interface{}) er
 		return nil
 	}
 	return fmt.Errorf("Error deleting CloudFlare Record: %s", err)
+}
+
+func subdomainName(fullName, domain string) string {
+	return strings.TrimSuffix(
+		strings.TrimSuffix(fullName, domain),
+		".",
+	)
 }
 
 func recordName(subdomain, domain string) string {
