@@ -27,14 +27,9 @@ func resourceCloudFlareRecord() *schema.Resource {
 				ForceNew: true,
 			},
 
-			"name": {
+			"subdomain": {
 				Type:     schema.TypeString,
 				Required: true,
-			},
-
-			"hostname": {
-				Type:     schema.TypeString,
-				Computed: true,
 			},
 
 			"type": {
@@ -76,12 +71,14 @@ func resourceCloudFlareRecord() *schema.Resource {
 func resourceCloudFlareRecordCreate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*cloudflare.API)
 
+	subdomain := d.Get("subdomain").(string)
+	domain := d.Get("domain").(string)
 	newRecord := cloudflare.DNSRecord{
 		Type:     d.Get("type").(string),
-		Name:     d.Get("name").(string),
+		Name:     fmt.Sprintf("%s.%s", subdomain, domain),
 		Content:  d.Get("value").(string),
 		Proxied:  d.Get("proxied").(bool),
-		ZoneName: d.Get("domain").(string),
+		ZoneName: domain,
 	}
 
 	if priority, ok := d.GetOk("priority"); ok {
@@ -148,9 +145,11 @@ func resourceCloudFlareRecordRead(d *schema.ResourceData, meta interface{}) erro
 		return err
 	}
 
+	subdomain := strings.TrimSuffix(record.Name, fmt.Sprintf(".%s", domain))
+
 	d.SetId(record.ID)
-	d.Set("hostname", record.Name)
 	d.Set("type", record.Type)
+	d.Set("subdomain", subdomain)
 	d.Set("value", record.Content)
 	d.Set("ttl", record.TTL)
 	d.Set("priority", record.Priority)
@@ -163,12 +162,14 @@ func resourceCloudFlareRecordRead(d *schema.ResourceData, meta interface{}) erro
 func resourceCloudFlareRecordUpdate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*cloudflare.API)
 
+	subdomain := d.Get("subdomain").(string)
+	domain := d.Get("domain").(string)
 	updateRecord := cloudflare.DNSRecord{
 		ID:       d.Id(),
 		Type:     d.Get("type").(string),
-		Name:     d.Get("name").(string),
+		Name:     fmt.Sprintf("%s.%s", subdomain, domain),
 		Content:  d.Get("value").(string),
-		ZoneName: d.Get("domain").(string),
+		ZoneName: domain,
 		Proxied:  false,
 	}
 
