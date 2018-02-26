@@ -33,6 +33,11 @@ func resourceCloudFlareRecord() *schema.Resource {
 				Default:  "",
 			},
 
+			"name": {
+				Type:    schema.TypeString,
+				Removed: "Please use 'subdomain' instead",
+			},
+
 			"type": {
 				Type:     schema.TypeString,
 				Required: true,
