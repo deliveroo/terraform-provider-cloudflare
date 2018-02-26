@@ -34,8 +34,9 @@ func resourceCloudFlareRecord() *schema.Resource {
 			},
 
 			"name": {
-				Type:    schema.TypeString,
-				Removed: "Please use 'subdomain' instead",
+				Type:       schema.TypeString,
+				Optional:   true,
+				Deprecated: "Please use 'subdomain' instead",
 			},
 
 			"type": {
