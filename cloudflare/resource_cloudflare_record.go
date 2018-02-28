@@ -13,10 +13,11 @@ const recordNotFoundMessage = "Invalid dns record identifier"
 
 func resourceCloudFlareRecord() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceCloudFlareRecordCreate,
-		Read:   resourceCloudFlareRecordRead,
-		Update: resourceCloudFlareRecordUpdate,
-		Delete: resourceCloudFlareRecordDelete,
+		Create:   resourceCloudFlareRecordCreate,
+		Read:     resourceCloudFlareRecordRead,
+		Update:   resourceCloudFlareRecordUpdate,
+		Delete:   resourceCloudFlareRecordDelete,
+		Importer: &schema.ResourceImporter{State: importRecord},
 
 		SchemaVersion: 1,
 		MigrateState:  resourceCloudFlareRecordMigrateState,
@@ -236,4 +237,36 @@ func recordName(subdomain, domain string) string {
 		return domain
 	}
 	return fmt.Sprintf("%s.%s", subdomain, domain)
+}
+
+func importRecord(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+	client := meta.(*cloudflare.API)
+	tokens := strings.Split(d.Id(), "|")
+	if len(tokens) != 3 {
+		return nil, fmt.Errorf("expecting subdomain|domain|type, got %q", d.Id())
+	}
+	subdomain, domain, recordType := tokens[0], tokens[1], tokens[2]
+	zoneID, err := client.ZoneIDByName(domain)
+	if err != nil {
+		return nil, fmt.Errorf("error finding zone %q: %s", domain, err)
+	}
+	filter := cloudflare.DNSRecord{
+		Name: fmt.Sprintf("%s.%s", subdomain, domain),
+		Type: recordType,
+	}
+	records, err := client.DNSRecords(zoneID, filter)
+	if err != nil {
+		return nil, fmt.Errorf("error filtering DNS records: %q", err)
+	}
+	if len(records) != 1 {
+		return nil, fmt.Errorf("expected 1 record, got %d", len(records))
+	}
+	d.SetId(records[0].ID)
+	if err := d.Set("domain", domain); err != nil {
+		return nil, fmt.Errorf("error setting domain %v", err)
+	}
+	if err := resourceCloudFlareRecordRead(d, meta); err != nil {
+		return nil, fmt.Errorf("error importing record %q", records[0].ID)
+	}
+	return []*schema.ResourceData{d}, nil
 }
