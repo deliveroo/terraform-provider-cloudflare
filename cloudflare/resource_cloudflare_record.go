@@ -240,7 +240,6 @@ func recordName(subdomain, domain string) string {
 }
 
 func importRecord(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	log.Printf("%#v\n", d)
 	client := meta.(*cloudflare.API)
 	tokens := strings.Split(d.Id(), "|")
 	if len(tokens) != 3 {
