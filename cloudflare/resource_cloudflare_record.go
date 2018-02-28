@@ -241,28 +241,30 @@ func recordName(subdomain, domain string) string {
 
 func importRecord(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 	client := meta.(*cloudflare.API)
-	tokens := strings.SplitN(d.Id(), "@", 2)
-	if len(tokens) != 2 {
-		return nil, fmt.Errorf("expecting subdomain@domain, got %q", d.Id())
+	tokens := strings.Split(d.Id(), "|")
+	if len(tokens) != 3 {
+		return nil, fmt.Errorf("expecting subdomain|domain|type, got %q", d.Id())
 	}
-	subdomain, domain := tokens[0], tokens[1]
+	subdomain, domain, recordType := tokens[0], tokens[1], tokens[2]
 	zoneID, err := client.ZoneIDByName(domain)
 	if err != nil {
 		return nil, fmt.Errorf("error finding zone %q: %s", domain, err)
 	}
-	filter := cloudflare.DNSRecord{Name: fmt.Sprintf("%s.%s", subdomain, domain)}
+	filter := cloudflare.DNSRecord{
+		Name: fmt.Sprintf("%s.%s", subdomain, domain),
+		Type: recordType,
+	}
 	records, err := client.DNSRecords(zoneID, filter)
 	if err != nil {
 		return nil, fmt.Errorf("error filtering DNS records: %q", err)
 	}
-	var ret []*schema.ResourceData
-	for _, record := range records {
-		data := &schema.ResourceData{}
-		data.SetId(record.ID)
-		if err := resourceCloudFlareRecordRead(data, meta); err != nil {
-			return nil, fmt.Errorf("error importing record %q", record.ID)
-		}
-		ret = append(ret, data)
+	if len(records) != 1 {
+		return nil, fmt.Errorf("expected 1 record, got %d", len(records))
 	}
-	return ret, nil
+	ret := &schema.ResourceData{}
+	ret.SetId(records[0].ID)
+	if err := resourceCloudFlareRecordRead(ret, meta); err != nil {
+		return nil, fmt.Errorf("error importing record %q", records[0].ID)
+	}
+	return []*schema.ResourceData{ret}, nil
 }
