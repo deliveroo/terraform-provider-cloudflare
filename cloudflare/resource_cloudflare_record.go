@@ -264,7 +264,9 @@ func importRecord(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceD
 	ret := &schema.ResourceData{}
 	ret.SetId(records[0].ID)
 	ret.Set("domain", domain)
-	fmt.Println(ret.Get("domain").(string))
+	if _, ok := ret.Get("domain").(string); !ok {
+		panic(ret.Get("domain"))
+	}
 	if err := resourceCloudFlareRecordRead(ret, meta); err != nil {
 		return nil, fmt.Errorf("error importing record %q", records[0].ID)
 	}
