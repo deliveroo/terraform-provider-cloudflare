@@ -240,6 +240,7 @@ func recordName(subdomain, domain string) string {
 }
 
 func importRecord(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+	log.Printf("%#v\n", d)
 	client := meta.(*cloudflare.API)
 	tokens := strings.Split(d.Id(), "|")
 	if len(tokens) != 3 {
@@ -261,14 +262,12 @@ func importRecord(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceD
 	if len(records) != 1 {
 		return nil, fmt.Errorf("expected 1 record, got %d", len(records))
 	}
-	ret := &schema.ResourceData{}
-	ret.SetId(records[0].ID)
-	ret.Set("domain", domain)
-	if _, ok := ret.Get("domain").(string); !ok {
-		panic(ret.Get("domain"))
+	d.SetId(records[0].ID)
+	if err := d.Set("domain", domain); err != nil {
+		return nil, fmt.Errorf("error setting domain %v", err)
 	}
-	if err := resourceCloudFlareRecordRead(ret, meta); err != nil {
+	if err := resourceCloudFlareRecordRead(d, meta); err != nil {
 		return nil, fmt.Errorf("error importing record %q", records[0].ID)
 	}
-	return []*schema.ResourceData{ret}, nil
+	return []*schema.ResourceData{d}, nil
 }
