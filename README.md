@@ -1,3 +1,9 @@
+DEPRECATED
+==========
+
+At some pointed we needed to fork the official one and fix bugs. We have switched to use the official one again. This repository is scheduled to be deleted.
+
+
 Terraform Provider
 ==================
 
